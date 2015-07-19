@@ -8,12 +8,13 @@ output:
 ## Housekeeping
 
 Clear Environment and Console
+
 ```{r clear_environment, echo=TRUE, results='hide'}
 rm(list=ls())
 cat('\014')
 ```
 
-packageR is a function used to install R Packages.
+packageR is a function used to install R Packages.<br />
 packageR is invoked, and packages installed, only when needed
 
 ```{r packageR, echo=TRUE, results='hide'}
@@ -32,13 +33,18 @@ packageR <- function(pkg){
 packageR("datasets")
 packageR("ProjectTemplate")
 packageR("ggplot2")
+packageR("lattice")
+packageR("scales")
 packageR("rmarkdown")
+packageR("knitr")
 packageR("data.table")
 packageR("dplyr")
 packageR("lubridate")
+packageR("sqldf")
+packageR("Hmisc")
 ```
 
-pathR is a function to simplify multi-device development.
+pathR is a function to simplify multi-device development.<br />
 pathR is used to set 'path_to_data' as appropriate for my machines
 
 ```{r pathr, echo=TRUE, results='hide'}
@@ -58,39 +64,237 @@ getwd()
 
 ```
 
-## Loading and preprocessing the data
+Configure key parameters for knitr
 
-```{r}
+```{r setup_knitr_params, echo=TRUE}
+opts_chunk$set(echo = TRUE, cache = TRUE, cache.path = "cache/", fig.path = "figure/")
+```
+
+## Loading and preprocessing the data<br />
+1. Load the data (<b>Note:</b> Because <b>data.table</b> is being used, fread, not read.csv, is used to populate the dataframe)
+
+```{r load_data, echo=TRUE}
 csv.name <- "activity.csv"
 
 if (!file.exists(csv.name)){
      unzip("activity.zip")
 }
 
-activity.dt <- fread("activity.csv",na.string="NA")
+dt.activity <- fread("activity.csv",na.strings=(c("NA")))
+```
 
-print(str(activity.dt))
-print(nrow(activity.dt))
-head(activity.dt,20)
+2. Process/transform the data (if necessary) into a format suitable for your analysis<br />
+2.a Coerce 'date' from Chr into Date data type (interesting finding: POSIX dates don't work)<br />
+2.b Coerce 'steps' from Int into Numeric to ensure it works with median function, later
+
+```{r conversions, echo=TRUE}
+dt.activity$date <- as.Date(dt.activity$date)
+dt.activity$steps <- as.numeric(dt.activity$steps)
+```
+
+Verify data.table and conversions
+
+```{r verify.01, echo=TRUE}
+print(str(dt.activity))
+print(nrow(dt.activity))
+head(dt.activity,20)
 ```
 
 ## What is mean total number of steps taken per day?
-Note from Instructions: "...ignore the missing values in the dataset""
+Note from Instructions: <i>"...ignore the missing values in the dataset"</i><br />
+1. Calculate the total number of steps taken per day (this can be accomplished with 'stat_summary', as shown below)<br />
+2. Make a histogram of the total number of steps taken each day
 
-```{r}
-steps.mean.by.day <- activity.dt[,lapply(.SD,mean,na.rm=TRUE),by=date,.SDcols='steps']
-print(format(steps.mean.by.day,digits=3))
+```{r histogram_plot_count_steps_per_day_ignore_na, echo=TRUE}
+p.1 <- ggplot(data = na.exclude(dt.activity), aes(x = date, y = steps))
+p.1 <- p.1 + stat_summary(fun.y = sum, geom = "histogram")
+p.1 <- p.1 + ggtitle("Count of Steps by Date (Excluding Missing Values)") + ylab("Count of Steps") + xlab("Date")
+
+print(p.1)
 ```
 
+3. Calculate and report the mean and median of the total number of steps taken per day<br />
+<b>IMPORTANT NOTE:</b> Because '0' steps occur so frequently in the source data--which means the median would be '0'--<br />
+This section of the assignment is being conducted with <b>TWO</b> datasets:<br />
+One that <b>includes</b> '0' values in mean & median computations, and<br />
+A second that <b>excludes</b> '0' values in mean & median computations
 
+First, mean & median with zeroes included
+
+```{r compute_mean_of_total_steps_by_date, echo=TRUE}
+total.steps.by.date <- na.exclude(dt.activity[,lapply(.SD,sum,na.rm=TRUE),by=date,.SDcols='steps'])
+
+mean.of.total.steps.by.date <- na.exclude(dt.activity[,lapply(.SD,mean,na.rm=TRUE),by=date,.SDcols='steps'])
+setnames(mean.of.total.steps.by.date,c("date","steps"), c("date","mean_of_steps"))
+print(mean.of.total.steps.by.date)
+
+median.of.total.steps.by.date <- na.exclude(dt.activity[,lapply(.SD,median,na.rm=TRUE),by=date,.SDcols='steps'])
+setnames(median.of.total.steps.by.date,c("date","steps"), c("date","median_of_steps"))
+print(median.of.total.steps.by.date)
+```
+
+Second, mean & median <b>without</b> zeroes (zeroes excluded)
+
+```{r compute_median_of_total_steps_by_date, echo=TRUE}
+activity.zeros.as.na.dt <- dt.activity
+activity.zeros.as.na.dt[activity.zeros.as.na.dt$steps == 0] <- NA
+
+mean.of.total.steps.by.date.exclude.zeroes <- na.exclude(activity.zeros.as.na.dt[,lapply(.SD,mean,na.rm=TRUE),by=date,.SDcols='steps'])
+setnames(mean.of.total.steps.by.date.exclude.zeroes,c("date","steps"), c("date","mean_of_steps"))
+print(mean.of.total.steps.by.date.exclude.zeroes)
+
+median.of.total.steps.by.date.exclude.zeroes <- na.exclude(activity.zeros.as.na.dt[,lapply(.SD,median,na.rm=TRUE),by=date,.SDcols='steps'])
+setnames(median.of.total.steps.by.date.exclude.zeroes,c("date","steps"), c("date","median_of_steps"))
+print(median.of.total.steps.by.date.exclude.zeroes)
+```
+
+Although the assignment does not specify if the mean & median are to be plotted, or not--<br />
+Just to be sure: a plot of both the mean & median of total steps by day are included for completness
+
+```{r plot_mean_median_of_total_steps_by_date, echo=TRUE}
+p.mean <- ggplot(data = na.exclude(mean.of.total.steps.by.date.exclude.zeroes), aes(x = date, y = mean_of_steps))
+p.mean <- p.mean + geom_line()
+p.mean <- p.mean + ggtitle("Line Plot of Means of Total Number of Steps by Date - Excluding Zero Values") + ylab("Mean of Daily Steps (Zeroes Excluded") + xlab("Date")
+print(p.mean)
+
+p.median <- ggplot(data = na.exclude(median.of.total.steps.by.date.exclude.zeroes), aes(x = date, y = median_of_steps))
+p.median <- p.median + geom_line()
+p.median <- p.median + ggtitle("Line Plot of Medians of Total Number of Steps by Date - Excluding Zero Values") + ylab("Median of Daily Steps (Zeroes Excluded") + xlab("Date")
+print(p.median)
+```
 
 ## What is the average daily activity pattern?
 
+1. Make a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)<br />
+<b>IMPORANT NOTE:</b> The 'interval' varable is in the form of [#]hmm; that is: [0]155 is Hour 1, Minute 55; which is followed by [0]200, or Hour 2, Minute 00.,br />
+First step is to use the <b>sqldf</b> package to group the active data.table by the interval identifier, then average it
 
+```{r average_activity_pattern, echo=TRUE}
+sql.select <- "select interval, avg(steps) as avg_steps from 'dt.activity' group by interval"
+dt.avg.activity.pattern <- sqldf(sql.select)
+print(head(dt.avg.activity.pattern))
+```
+
+Now, prepare and print time-series plot (type="l") using <b>xyplot</b> from lattice package
+
+```{r time_series_plot_avg_activity_pattern, echo=TRUE}
+xyplot(avg_steps ~ interval,
+       data = dt.avg.activity.pattern,
+       type = "l",
+       main = "Average Daily Activity Pattern Grouped by Interval Identifier",
+       xlab = "Interval Identifer",
+       ylab = "Average of Steps Grouped by Interval")
+```
+
+2. Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+
+```{r determine_max_interval, echo=TRUE}
+max.steps.interval <- dt.avg.activity.pattern[max(dt.avg.activity.pattern$avg_steps),]
+print(max.steps.interval)
+```
+The 5-minute interval that has the maximum number of steps (averaged across all days in the dataset) is interval id <b>`r max.steps.interval$interval`</b>, which reflected a maximum value of <b>~`r format(max.steps.interval$avg_steps,digits=3)`</b>.
 
 ## Imputing missing values
+Note that there are a number of days/intervals where there are missing values (coded as NA).<br />
+The presence of missing days may introduce bias into some calculations or summaries of the data.<br /><br />
+1. Calculate and report the total number of missing values in the dataset (i.e.. the total number of rows with NAs).<br />
+In the source dataset, there is a total of <b>`r nrow(dt.activity)`</b> rows; of which <b>`r sum(is.na(dt.activity))`</b> have missing values.<br /><br />
+2. Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc.<br /><br />
+3. Create a new dataset that is equal to the original dataset but with the missing data filled in.<br /><br />
+### Approach to Transform Imputed Values
+The approach taken to ransform imputed value is:<br />
+1. Observations whose original 'steps' value is zero ('0') <b>remain as zero</b>, and<br />
+2. <b>'NA'</b> observations are transformed to be the rounded value of the 'avg_steps' (with a minimum value of '1') for the corresponding interval, as computed in a prior section (above)<br />
+3. Create a new data.table that reflects the modified imputed values (the <b>new data.table is 'merged_all'</b>, as shown below)
 
+```{r set_na_to_avg_steps, echo=TRUE}
+merge_x <- as.data.table(dt.activity)
+setkey(merge_x,interval)
+merge_y <- as.data.table(dt.avg.activity.pattern)
+setkey(merge_y,interval)
+
+merged <- merge(merge_x,merge_y,by.x = interval, by.y = interval)
+needsfill <- merged[is.na(merged$steps)]
+needsfill$steps <- needsfill$avg_steps
+needsfill$steps <- round(needsfill$steps)
+
+merged <- merge(merge_x,merge_y,by.x = interval, by.y = interval)
+
+merged_0 <- merge(merge_x,merge_y,by.x = interval, by.y = interval)
+
+obs_nominal_1 <- merged_0[!is.na(merged_0$steps)]
+obs_fillna <- merged_0[is.na(merged_0$steps)]
+obs_fillna$steps <- round(obs_fillna$avg_steps)
+
+obs_nominal_2 <- obs_fillna[obs_fillna$steps >= 1]
+obs_fillzeroes <- obs_fillna[obs_fillna$steps < 1]
+obs_fillzeroes$steps <- 1
+merged_fill <- rbind(obs_nominal_2,obs_fillzeroes)
+merged_all <- rbind(obs_nominal_1,merged_fill)
+```
+
+Now, inspect the results as contained in the 'merged_all' data.table
+
+```{r verify.03, echo=TRUE}
+print(head(merged_all))
+print(str(merged_all))
+```
+
+4.a Make a histogram of the total number of steps taken each day.
+
+```{r histogram_plot_count_steps_per_day_with_imputed_values, echo=TRUE}
+p.2 <- ggplot(data = merged_all, aes(x = date, y = steps))
+p.2 <- p.2 + stat_summary(fun.y = sum, geom = "histogram")
+p.2 <- p.2 + ggtitle("Count of Steps by Date (Missing Values Imputed") + ylab("Count of Steps") + xlab("Date")
+
+print(p.2)
+```
+
+4.b  Calculate and report the mean and median total number of steps taken per day [Using the <i>imputed dataset</i>].<br />
+
+```{r compute_mean_of_imputed_total_steps_by_date, echo=TRUE}
+total.imputed.steps.by.date <- merged_all[,lapply(.SD,sum,na.rm=TRUE),by=date,.SDcols='steps']
+
+mean.of.imputed.total.steps.by.date <- merged_all[,lapply(.SD,mean,na.rm=TRUE),by=date,.SDcols='steps']
+setnames(mean.of.imputed.total.steps.by.date,c("date","steps"), c("date","mean_of_steps_imputed"))
+print(mean.of.imputed.total.steps.by.date)
+
+median.of.imputed.total.steps.by.date <- merged_all[,lapply(.SD,median,na.rm=TRUE),by=date,.SDcols='steps']
+setnames(median.of.imputed.total.steps.by.date,c("date","steps"), c("date","median_of_steps_imputed"))
+print(median.of.imputed.total.steps.by.date)
+```
+
+Do these values differ from the estimates from the first part of the assignment?<br />
+After the imputation process, there is a significant difference in the resulting datasets.<br />
+In the original mean & median analysis (above)&mdash;when "NAs" were excluded&mdash;there were <b>`r nrow(mean.of.total.steps.by.date)`</b> observations in the dataset.<br />
+After the data are modified to impute missing values, the resultant mean & median analysis reflects <b>`r nrow(mean.of.imputed.total.steps.by.date)`</b> observations.
+
+```{r combine_source_and_imputed_mean_and_median_datasets, echo=TRUE}
+setkey(mean.of.total.steps.by.date, date)
+setkey(mean.of.imputed.total.steps.by.date, date)
+combined_means <- mean.of.total.steps.by.date[mean.of.imputed.total.steps.by.date]
+
+setkey(median.of.total.steps.by.date, date)
+setkey(median.of.imputed.total.steps.by.date, date)
+combined_medians <- median.of.total.steps.by.date[median.of.imputed.total.steps.by.date]
+```
+
+```{r compute_mean_median_differences, echo=TRUE}
+combined_means$meandiff <- (combined_means$mean_of_steps - combined_means$mean_of_steps_imputed)
+print(combined_means)
+
+combined_medians$mediandiff <- (combined_medians$median_of_steps - combined_medians$median_of_steps_imputed)
+print(combined_medians)
+```
+
+<b>ANALYSIS RESULTS:</b><br />
+Mean: `r nrow(combined_means[combined_means$meandiff > 0])` days were affected by imputation.<br />
+Median: `r nrow(combined_medians[combined_medians$mediandiff > 0])` days were affected by imputation.<br />
+
+
+What is the impact of imputing missing data on the estimates of the total daily number of steps?
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
 
