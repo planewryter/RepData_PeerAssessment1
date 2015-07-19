@@ -33,15 +33,17 @@ packageR <- function(pkg){
 packageR("datasets")
 packageR("ProjectTemplate")
 packageR("ggplot2")
+packageR("ggthemes")
 packageR("lattice")
 packageR("scales")
 packageR("rmarkdown")
-packageR("knitr")
 packageR("data.table")
+packageR("sqldf")
 packageR("dplyr")
 packageR("lubridate")
 packageR("sqldf")
 packageR("Hmisc")
+packageR("knitr")
 ```
 
 pathR is a function to simplify multi-device development.<br />
@@ -240,7 +242,7 @@ print(head(merged_all))
 print(str(merged_all))
 ```
 
-4.a Make a histogram of the total number of steps taken each day.
+4.a Make a histogram of the total number of steps taken each day [Using the <i>imputed dataset</i>].<br />
 
 ```{r histogram_plot_count_steps_per_day_with_imputed_values, echo=TRUE}
 p.2 <- ggplot(data = merged_all, aes(x = date, y = steps))
@@ -268,7 +270,7 @@ Do these values differ from the estimates from the first part of the assignment?
 What is the impact of imputing missing data on the estimates of the total daily number of steps?<br />
 After the imputation process, there is a significant difference in the resulting datasets.<br />
 In the original mean & median analysis (above)&mdash;when "NAs" were excluded&mdash;there were <b>`r nrow(mean.of.total.steps.by.date)`</b> observations in the dataset.<br />
-After the data are modified to impute missing values, the resultant mean & median analysis reflects <b>`r nrow(mean.of.imputed.total.steps.by.date)`</b> observations.
+After the data are modified to impute missing values, the resultant mean & median analysis reflects <b>`r nrow(mean.of.imputed.total.steps.by.date)`</b> observations. //RICK ADD HISTOGRAM!!!
 
 ```{r combine_source_and_imputed_mean_and_median_datasets, echo=TRUE}
 setkey(mean.of.total.steps.by.date, date)
@@ -292,6 +294,31 @@ print(combined_medians)
 
 1. Create a new factor variable in the dataset with two levels – “weekday” and “weekend” indicating whether a given date is a weekday or weekend day.
 
+```{r create_and_assign_factor_variables, echo=TRUE}
+merged_all$DOW <- weekdays(merged_all$date)
+merged_all$weekpart <- factor(merged_all,levels = c('weekday','weekend'))
+merged_all$weekpart <- ifelse(merged_all$DOW %in% c("Saturday", "Sunday"), "weekend", "weekday")
 
+sql.select <- "select weekpart, interval, avg(steps) as avg_steps from 'merged_all' group by weekpart, interval"
+activity.by.weekpart <- sqldf(sql.select)
+```
 
 2. Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). See the README file in the GitHub repository to see an example of what this plot should look like using simulated data.
+
+```{r panel_plot_weekpart, echo=TRUE}
+p.3 <- ggplot(data = activity.by.weekpart, aes(x = interval, y = avg_steps))  +
+     geom_line(color = "blue") +
+     labs(y = "Steps", x = "Time of day")  +
+     ylab("Average Number of Steps") +
+     xlab("Interval") +
+     theme(panel.background = element_rect(color = 'black', fill = 'white')) +
+     theme(strip.background = element_rect(color = 'black', fill = 'wheat2')) +
+     theme(strip.text.x = element_text(angle=45, hjust=1)) +
+     ggtitle("Activity Pattern by Weekpart") +
+     facet_grid(weekpart ~ .)
+
+print(p.3)
+```
+
+
+

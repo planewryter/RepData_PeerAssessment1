@@ -44,6 +44,14 @@ packageR("ggplot2")
 ```
 
 ```r
+packageR("ggthemes")
+```
+
+```
+## Loading required package: ggthemes
+```
+
+```r
 packageR("lattice")
 ```
 
@@ -68,19 +76,23 @@ packageR("rmarkdown")
 ```
 
 ```r
-packageR("knitr")
-```
-
-```
-## Loading required package: knitr
-```
-
-```r
 packageR("data.table")
 ```
 
 ```
 ## Loading required package: data.table
+```
+
+```r
+packageR("sqldf")
+```
+
+```
+## Loading required package: sqldf
+## Loading required package: gsubfn
+## Loading required package: proto
+## Loading required package: RSQLite
+## Loading required package: DBI
 ```
 
 ```r
@@ -121,17 +133,6 @@ packageR("lubridate")
 
 ```r
 packageR("sqldf")
-```
-
-```
-## Loading required package: sqldf
-## Loading required package: gsubfn
-## Loading required package: proto
-## Loading required package: RSQLite
-## Loading required package: DBI
-```
-
-```r
 packageR("Hmisc")
 ```
 
@@ -150,6 +151,14 @@ packageR("Hmisc")
 ## The following objects are masked from 'package:base':
 ## 
 ##     format.pval, round.POSIXt, trunc.POSIXt, units
+```
+
+```r
+packageR("knitr")
+```
+
+```
+## Loading required package: knitr
 ```
 
 pathR is a function to simplify multi-device development.<br />
@@ -632,7 +641,7 @@ In the source dataset, there is a total of <b>17568</b> rows; of which <b>2304</
 2. Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc.<br /><br />
 3. Create a new dataset that is equal to the original dataset but with the missing data filled in.<br /><br />
 ### Approach to Transform Imputed Values
-The approach taken to ransform imputed value is:<br />
+The approach taken to ransform imputed values is:<br />
 1. Observations whose original 'steps' value is zero ('0') <b>remain as zero</b>, and<br />
 2. <b>'NA'</b> observations are transformed to be the rounded value of the 'avg_steps' (with a minimum value of '1') for the corresponding interval, as computed in a prior section (above)<br />
 3. Create a new data.table that reflects the modified imputed values (the <b>new data.table is 'merged_all'</b>, as shown below)
@@ -695,7 +704,7 @@ print(str(merged_all))
 ## NULL
 ```
 
-4.a Make a histogram of the total number of steps taken each day.
+4.a Make a histogram of the total number of steps taken each day [Using the <i>imputed dataset</i>].<br />
 
 
 ```r
@@ -858,9 +867,10 @@ print(median.of.imputed.total.steps.by.date)
 ```
 
 Do these values differ from the estimates from the first part of the assignment?<br />
+What is the impact of imputing missing data on the estimates of the total daily number of steps?<br />
 After the imputation process, there is a significant difference in the resulting datasets.<br />
 In the original mean & median analysis (above)&mdash;when "NAs" were excluded&mdash;there were <b>53</b> observations in the dataset.<br />
-After the data are modified to impute missing values, the resultant mean & median analysis reflects <b>61</b> observations.
+After the data are modified to impute missing values, the resultant mean & median analysis reflects <b>61</b> observations. //RICK ADD HISTOGRAM!!!
 
 
 ```r
@@ -1016,14 +1026,52 @@ print(combined_medians)
 ##           date median_of_steps median_of_steps_imputed mediandiff
 ```
 
-<b>ANALYSIS RESULTS:</b><br />
-Mean: 0 days were affected by imputation.<br />
-Median: 0 days were affected by imputation.<br />
-
-
-What is the impact of imputing missing data on the estimates of the total daily number of steps?
-
-
 ## Are there differences in activity patterns between weekdays and weekends?
+
+1. Create a new factor variable in the dataset with two levels – “weekday” and “weekend” indicating whether a given date is a weekday or weekend day.
+
+
+```r
+merged_all$DOW <- weekdays(merged_all$date)
+merged_all$weekpart <- factor(merged_all,levels = c('weekday','weekend'))
+```
+
+```
+## Warning in `[<-.data.table`(x, j = name, value = value): Supplied 5 items
+## to be assigned to 17568 items of column 'weekpart' (recycled leaving
+## remainder of 3 items).
+```
+
+```r
+merged_all$weekpart <- ifelse(merged_all$DOW %in% c("Saturday", "Sunday"), "weekend", "weekday")
+
+sql.select <- "select weekpart, interval, avg(steps) as avg_steps from 'merged_all' group by weekpart, interval"
+activity.by.weekpart <- sqldf(sql.select)
+```
+
+```
+## Loading required package: tcltk
+```
+
+2. Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). See the README file in the GitHub repository to see an example of what this plot should look like using simulated data.
+
+
+```r
+p.3 <- ggplot(data = activity.by.weekpart, aes(x = interval, y = avg_steps))  +
+     geom_line(color = "blue") +
+     labs(y = "Steps", x = "Time of day")  +
+     ylab("Average Number of Steps") +
+     xlab("Interval") +
+     theme(panel.background = element_rect(color = 'black', fill = 'white')) +
+     theme(strip.background = element_rect(color = 'black', fill = 'wheat2')) +
+     theme(strip.text.x = element_text(angle=45, hjust=1)) +
+     ggtitle("Activity Pattern by Weekpart") +
+     facet_grid(weekpart ~ .)
+
+print(p.3)
+```
+
+![](figure/panel_plot_weekpart-1.png) 
+
 
 
