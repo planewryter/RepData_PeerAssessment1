@@ -202,7 +202,7 @@ In the source dataset, there is a total of <b>`r nrow(dt.activity)`</b> rows; of
 2. Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc.<br /><br />
 3. Create a new dataset that is equal to the original dataset but with the missing data filled in.<br /><br />
 ### Approach to Transform Imputed Values
-The approach taken to ransform imputed value is:<br />
+The approach taken to ransform imputed values is:<br />
 1. Observations whose original 'steps' value is zero ('0') <b>remain as zero</b>, and<br />
 2. <b>'NA'</b> observations are transformed to be the rounded value of the 'avg_steps' (with a minimum value of '1') for the corresponding interval, as computed in a prior section (above)<br />
 3. Create a new data.table that reflects the modified imputed values (the <b>new data.table is 'merged_all'</b>, as shown below)
@@ -265,6 +265,7 @@ print(median.of.imputed.total.steps.by.date)
 ```
 
 Do these values differ from the estimates from the first part of the assignment?<br />
+What is the impact of imputing missing data on the estimates of the total daily number of steps?<br />
 After the imputation process, there is a significant difference in the resulting datasets.<br />
 In the original mean & median analysis (above)&mdash;when "NAs" were excluded&mdash;there were <b>`r nrow(mean.of.total.steps.by.date)`</b> observations in the dataset.<br />
 After the data are modified to impute missing values, the resultant mean & median analysis reflects <b>`r nrow(mean.of.imputed.total.steps.by.date)`</b> observations.
@@ -287,14 +288,10 @@ combined_medians$mediandiff <- (combined_medians$median_of_steps - combined_medi
 print(combined_medians)
 ```
 
-<b>ANALYSIS RESULTS:</b><br />
-Mean: `r nrow(combined_means[combined_means$meandiff > 0])` days were affected by imputation.<br />
-Median: `r nrow(combined_medians[combined_medians$mediandiff > 0])` days were affected by imputation.<br />
-
-
-What is the impact of imputing missing data on the estimates of the total daily number of steps?
-
-
 ## Are there differences in activity patterns between weekdays and weekends?
 
+1. Create a new factor variable in the dataset with two levels – “weekday” and “weekend” indicating whether a given date is a weekday or weekend day.
 
+
+
+2. Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). See the README file in the GitHub repository to see an example of what this plot should look like using simulated data.
