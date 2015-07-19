@@ -653,24 +653,34 @@ setkey(merge_x,interval)
 merge_y <- as.data.table(dt.avg.activity.pattern)
 setkey(merge_y,interval)
 
-merged <- merge(merge_x,merge_y,by.x = interval, by.y = interval)
+merged <- merge(merge_x, merge_y, by.x = interval, by.y = interval)
 needsfill <- merged[is.na(merged$steps)]
 needsfill$steps <- needsfill$avg_steps
 needsfill$steps <- round(needsfill$steps)
 
-merged <- merge(merge_x,merge_y,by.x = interval, by.y = interval)
-
-merged_0 <- merge(merge_x,merge_y,by.x = interval, by.y = interval)
-
-obs_nominal_1 <- merged_0[!is.na(merged_0$steps)]
-obs_fillna <- merged_0[is.na(merged_0$steps)]
+obs_nominal_1 <- merged[!is.na(merged$steps)]
+obs_fillna <- merged[is.na(merged$steps)]
 obs_fillna$steps <- round(obs_fillna$avg_steps)
 
 obs_nominal_2 <- obs_fillna[obs_fillna$steps >= 1]
-obs_fillzeroes <- obs_fillna[obs_fillna$steps < 1]
-obs_fillzeroes$steps <- 1
-merged_fill <- rbind(obs_nominal_2,obs_fillzeroes)
-merged_all <- rbind(obs_nominal_1,merged_fill)
+obs_fillzeroes_1 <- obs_fillna[obs_fillna$steps < 1]
+obs_fillzeroes_2 <- obs_fillzeroes_1[obs_fillzeroes_1$avg_steps > 0]
+obs_fillzeroes_2$steps <- 1
+
+obs_fillzeroes_3 <- obs_fillzeroes_1[obs_fillzeroes_1$avg_steps == 0]
+
+combine_1 <- rbind(obs_nominal_2,obs_fillzeroes_2)
+combine_2 <- rbind(combine_1,obs_fillzeroes_3)
+
+merged_all <- rbind(obs_nominal_1,combine_2)
+
+mean_original <- mean(na.exclude(dt.activity$steps))
+mean_imputed <- mean(merged_all$steps)
+diff.mean <- mean_imputed - mean_original
+
+median_original <- median(na.exclude(dt.activity$steps))
+median_imputed <- median(merged_all$steps)
+diff.median <- median_imputed - median_original
 ```
 
 Now, inspect the results as contained in the 'merged_all' data.table
@@ -870,7 +880,10 @@ Do these values differ from the estimates from the first part of the assignment?
 What is the impact of imputing missing data on the estimates of the total daily number of steps?<br />
 After the imputation process, there is a significant difference in the resulting datasets.<br />
 In the original mean & median analysis (above)&mdash;when "NAs" were excluded&mdash;there were <b>53</b> observations in the dataset.<br />
-After the data are modified to impute missing values, the resultant mean & median analysis reflects <b>61</b> observations. //RICK ADD HISTOGRAM!!!
+After the data are modified to impute missing values, the resultant mean & median analysis reflects <b>61</b> observations.<br />
+Also, the difference between the <b>imputed mean</b> and <b>prior mean, excluding NAs</b> is <b>0.0085662</b>.<br />
+The difference between the <b>imputed median</b> and <b>prior median, excluding NAs</b> is <b>0</b>.<br /><br />
+These small differences are explained by the large number of '0' observations.
 
 
 ```r
@@ -1073,5 +1086,7 @@ print(p.3)
 
 ![](figure/panel_plot_weekpart-1.png) 
 
-
+##This completes the submission for this assignment.
+Thank you very much for your thoughtful evaluation.<br />
+Best regards for the successful completion of this valuable course.<br />
 
